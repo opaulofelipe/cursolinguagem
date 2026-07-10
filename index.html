@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Aprendendo Cinema no Youtube</title>
+
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <main class="app">
     <header class="topbar">
@@ -18,7 +21,13 @@
         </div>
       </div>
 
-      <button id="resetBtn" class="icon-btn" aria-label="Zerar progresso" title="Zerar progresso">
+      <button
+        id="resetBtn"
+        class="icon-btn"
+        type="button"
+        aria-label="Zerar progresso"
+        title="Zerar progresso"
+      >
         ↺
       </button>
     </header>
@@ -27,6 +36,14 @@
       <div class="player-card">
         <div class="player-frame">
           <div id="player"></div>
+        </div>
+
+        <div class="current-video">
+          <span class="current-video-label">Agora</span>
+
+          <h2 id="currentVideoTitle" class="current-video-title">
+            CARREGANDO
+          </h2>
         </div>
       </div>
 
@@ -48,14 +65,43 @@
           </div>
         </div>
 
-        <div class="progress-bar" aria-label="Progresso da playlist">
-          <div id="progressFill" class="progress-fill"></div>
+        <div
+          class="progress-bar"
+          aria-label="Progresso da playlist"
+        >
+          <div
+            id="progressFill"
+            class="progress-fill"
+          ></div>
         </div>
 
         <div class="player-actions">
-          <button id="prevBtn" class="action-btn" aria-label="Vídeo anterior">←</button>
-          <button id="markBtn" class="action-btn primary" aria-label="Marcar como visto">✓</button>
-          <button id="nextBtn" class="action-btn" aria-label="Próximo vídeo">→</button>
+          <button
+            id="prevBtn"
+            class="action-btn"
+            type="button"
+            aria-label="Vídeo anterior"
+          >
+            ←
+          </button>
+
+          <button
+            id="markBtn"
+            class="action-btn primary"
+            type="button"
+            aria-label="Marcar como visto"
+          >
+            ✓
+          </button>
+
+          <button
+            id="nextBtn"
+            class="action-btn"
+            type="button"
+            aria-label="Próximo vídeo"
+          >
+            →
+          </button>
         </div>
       </aside>
     </section>
@@ -65,9 +111,29 @@
         <h2>Aulas</h2>
 
         <div class="filters" aria-label="Filtros">
-          <button class="filter-btn active" data-filter="all">Todas</button>
-          <button class="filter-btn" data-filter="pending">Pendentes</button>
-          <button class="filter-btn" data-filter="watched">Vistas</button>
+          <button
+            class="filter-btn active"
+            type="button"
+            data-filter="all"
+          >
+            Todas
+          </button>
+
+          <button
+            class="filter-btn"
+            type="button"
+            data-filter="pending"
+          >
+            Pendentes
+          </button>
+
+          <button
+            class="filter-btn"
+            type="button"
+            data-filter="watched"
+          >
+            Vistas
+          </button>
         </div>
       </div>
 
@@ -75,7 +141,12 @@
     </section>
   </main>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div
+    id="toast"
+    class="toast"
+    role="status"
+    aria-live="polite"
+  ></div>
 
   <script src="script.js"></script>
 </body>
