@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon">▶</div>
+
+        <div>
+          <h1>Playlist</h1>
+          <p id="statusLabel">Carregando</p>
+        </div>
+      </div>
+
+      <button id="resetBtn" class="icon-btn" aria-label="Zerar progresso" title="Zerar progresso">
+        ↺
+      </button>
+    </header>
+
+    <section class="dashboard">
+      <div class="player-card">
+        <div class="player-frame">
+          <div id="player"></div>
+        </div>
+      </div>
+
+      <aside class="progress-card">
+        <div class="stats">
+          <div class="stat">
+            <strong id="totalVideos">0</strong>
+            <span>Total</span>
+          </div>
+
+          <div class="stat">
+            <strong id="watchedVideos">0</strong>
+            <span>Vistos</span>
+          </div>
+
+          <div class="stat">
+            <strong id="progressPercent">0%</strong>
+            <span>Progresso</span>
+          </div>
+        </div>
+
+        <div class="progress-bar" aria-label="Progresso da playlist">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+
+        <div class="player-actions">
+          <button id="prevBtn" class="action-btn" aria-label="Vídeo anterior">←</button>
+          <button id="markBtn" class="action-btn primary" aria-label="Marcar como visto">✓</button>
+          <button id="nextBtn" class="action-btn" aria-label="Próximo vídeo">→</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="playlist-area">
+      <div class="section-head">
+        <h2>Aulas</h2>
+
+        <div class="filters" aria-label="Filtros">
+          <button class="filter-btn active" data-filter="all">Todas</button>
+          <button class="filter-btn" data-filter="pending">Pendentes</button>
+          <button class="filter-btn" data-filter="watched">Vistas</button>
+        </div>
+      </div>
+
+      <div id="videoGrid" class="video-grid"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
