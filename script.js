@@ -1,719 +1,20 @@
-Perfeito. Abaixo estão os códigos completos. O **HTML praticamente não mudou**, mas envio tudo separado para você copiar e colar.
-
-Para aparecer **título real + duração**, coloque uma chave da **YouTube Data API v3** aqui no JavaScript:
-
-```js
-youtubeApiKey: ""
-```
-
-Sem chave, o site continua funcionando. Ele tenta buscar o **título** por `oEmbed`, mas a **duração** só aparece com API.
-
----
-
-## `index.html`
-
-```html
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <main class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">▶</div>
-
-        <div>
-          <h1>Playlist</h1>
-          <p id="statusLabel">Carregando</p>
-        </div>
-      </div>
-
-      <button id="resetBtn" class="icon-btn" aria-label="Zerar progresso" title="Zerar progresso">
-        ↺
-      </button>
-    </header>
-
-    <section class="dashboard">
-      <div class="player-card">
-        <div class="player-frame">
-          <div id="player"></div>
-        </div>
-      </div>
-
-      <aside class="progress-card">
-        <div class="stats">
-          <div class="stat">
-            <strong id="totalVideos">0</strong>
-            <span>Total</span>
-          </div>
-
-          <div class="stat">
-            <strong id="watchedVideos">0</strong>
-            <span>Vistos</span>
-          </div>
-
-          <div class="stat">
-            <strong id="progressPercent">0%</strong>
-            <span>Progresso</span>
-          </div>
-        </div>
-
-        <div class="progress-bar" aria-label="Progresso da playlist">
-          <div id="progressFill" class="progress-fill"></div>
-        </div>
-
-        <div class="player-actions">
-          <button id="prevBtn" class="action-btn" aria-label="Vídeo anterior">←</button>
-          <button id="markBtn" class="action-btn primary" aria-label="Marcar como visto">✓</button>
-          <button id="nextBtn" class="action-btn" aria-label="Próximo vídeo">→</button>
-        </div>
-      </aside>
-    </section>
-
-    <section class="playlist-area">
-      <div class="section-head">
-        <h2>Aulas</h2>
-
-        <div class="filters" aria-label="Filtros">
-          <button class="filter-btn active" data-filter="all">Todas</button>
-          <button class="filter-btn" data-filter="pending">Pendentes</button>
-          <button class="filter-btn" data-filter="watched">Vistas</button>
-        </div>
-      </div>
-
-      <div id="videoGrid" class="video-grid"></div>
-    </section>
-  </main>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <script src="script.js"></script>
-</body>
-</html>
-```
-
----
-
-## `style.css`
-
-```css
-:root {
-  --bg: #f6f7fb;
-  --card: #ffffff;
-  --text: #17181c;
-  --muted: #777d8c;
-  --line: #e6e8ef;
-  --soft: #f0f2f7;
-  --accent: #151515;
-
-  --green: #16803c;
-  --green-bg: #e7f7ed;
-  --green-line: #bce6ca;
-
-  --radius-xl: 28px;
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --shadow: 0 20px 60px rgba(20, 22, 30, 0.08);
-  --shadow-soft: 0 12px 30px rgba(20, 22, 30, 0.06);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top left, #ffffff 0, transparent 34rem),
-    var(--bg);
-  color: var(--text);
-}
-
-button {
-  font: inherit;
-}
-
-.app {
-  width: min(1180px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 28px 0 56px;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.brand-icon {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 17px;
-  box-shadow: var(--shadow-soft);
-}
-
-h1,
-h2,
-p {
-  margin: 0;
-}
-
-h1 {
-  font-size: clamp(1.35rem, 2vw, 1.8rem);
-  letter-spacing: -0.04em;
-}
-
-#statusLabel {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.icon-btn {
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--text);
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-}
-
-.icon-btn:hover {
-  transform: translateY(-1px);
-  background: #fff;
-  border-color: #d7dae3;
-}
-
-.dashboard {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: 18px;
-  align-items: stretch;
-}
-
-.player-card,
-.progress-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(230, 232, 239, 0.85);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-}
-
-.player-card {
-  overflow: hidden;
-  padding: 12px;
-}
-
-.player-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 22px;
-  background: #111;
-}
-
-.player-frame iframe,
-#player {
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
-.progress-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 24px;
-  min-height: 100%;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-.stat {
-  padding: 18px;
-  border-radius: 20px;
-  background: var(--soft);
-}
-
-.stat strong {
-  display: block;
-  font-size: clamp(1.6rem, 3vw, 2.35rem);
-  line-height: 1;
-  letter-spacing: -0.06em;
-}
-
-.stat span {
-  display: block;
-  margin-top: 7px;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 12px;
-  margin: 26px 0;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--soft);
-}
-
-.progress-fill {
-  width: 0%;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 0.4s ease;
-}
-
-.player-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.action-btn {
-  height: 48px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #fff;
-  color: var(--text);
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-}
-
-.action-btn:hover {
-  transform: translateY(-1px);
-  border-color: #d5d8e2;
-}
-
-.action-btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.playlist-area {
-  margin-top: 26px;
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-h2 {
-  font-size: 1.05rem;
-  letter-spacing: -0.03em;
-}
-
-.filters {
-  display: flex;
-  gap: 8px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.filter-btn {
-  border: 0;
-  border-radius: 999px;
-  padding: 8px 13px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.filter-btn.active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.video-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.video-card {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: var(--shadow-soft);
-  cursor: pointer;
-  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
-}
-
-.video-card:hover {
-  transform: translateY(-3px);
-  border-color: #cfd3df;
-}
-
-.video-card.active {
-  border-color: var(--accent);
-  box-shadow: 0 18px 48px rgba(20, 22, 30, 0.12);
-}
-
-.video-card.watched {
-  border-color: var(--green-line);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfffc 100%);
-}
-
-.thumb {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: #111;
-}
-
-.thumb::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.36)),
-    rgba(22, 128, 60, 0.18);
-  transition: opacity 0.28s ease;
-}
-
-.thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  filter: saturate(0.95);
-  transition: transform 0.28s ease, opacity 0.28s ease, filter 0.28s ease;
-}
-
-.video-card:hover .thumb img {
-  transform: scale(1.04);
-}
-
-.video-card.watched .thumb::after {
-  opacity: 1;
-}
-
-.video-card.watched .thumb img {
-  opacity: 0.5;
-  filter: grayscale(1) contrast(0.9);
-}
-
-.badge {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  min-width: 34px;
-  height: 28px;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 700;
-  backdrop-filter: blur(8px);
-}
-
-.duration-badge {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 2;
-  min-width: 42px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: rgba(20, 20, 20, 0.78);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  backdrop-filter: blur(8px);
-}
-
-.thumb-check {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 999px;
-  background: rgba(22, 128, 60, 0.94);
-  color: #fff;
-  font-size: 1.35rem;
-  font-weight: 800;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.86);
-  box-shadow: 0 16px 36px rgba(22, 128, 60, 0.32);
-  transition: opacity 0.24s ease, transform 0.24s ease;
-}
-
-.video-card.watched .thumb-check {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.video-info {
-  padding: 13px 14px 15px;
-}
-
-.video-title {
-  display: -webkit-box;
-  min-height: 2.45em;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 650;
-  line-height: 1.23;
-  letter-spacing: -0.02em;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.video-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.video-duration {
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-}
-
-.state-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 24px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--soft);
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.state-pill.watched {
-  background: var(--green-bg);
-  color: var(--green);
-}
-
-.state-pill.watched::before {
-  content: "✓";
-  display: grid;
-  place-items: center;
-  width: 15px;
-  height: 15px;
-  border-radius: 999px;
-  background: var(--green);
-  color: #fff;
-  font-size: 0.62rem;
-  line-height: 1;
-}
-
-.empty-state {
-  grid-column: 1 / -1;
-  padding: 32px;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-lg);
-  color: var(--muted);
-  text-align: center;
-}
-
-.toast {
-  position: fixed;
-  left: 50%;
-  bottom: 22px;
-  z-index: 10;
-  max-width: calc(100% - 32px);
-  padding: 12px 16px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.88rem;
-  box-shadow: var(--shadow);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 12px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-@media (max-width: 980px) {
-  .dashboard {
-    grid-template-columns: 1fr;
-  }
-
-  .progress-card {
-    min-height: auto;
-  }
-
-  .stats {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .video-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 680px) {
-  .app {
-    width: min(100% - 22px, 1180px);
-    padding-top: 18px;
-  }
-
-  .topbar {
-    margin-bottom: 16px;
-  }
-
-  .brand-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-  }
-
-  .player-card {
-    padding: 8px;
-    border-radius: 22px;
-  }
-
-  .player-frame {
-    border-radius: 17px;
-  }
-
-  .progress-card {
-    padding: 16px;
-    border-radius: 22px;
-  }
-
-  .stats {
-    gap: 8px;
-  }
-
-  .stat {
-    padding: 14px 12px;
-    border-radius: 16px;
-  }
-
-  .stat strong {
-    font-size: 1.45rem;
-  }
-
-  .stat span {
-    font-size: 0.72rem;
-  }
-
-  .section-head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .filters {
-    width: 100%;
-    overflow-x: auto;
-  }
-
-  .filter-btn {
-    flex: 1;
-    white-space: nowrap;
-  }
-
-  .video-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 11px;
-  }
-
-  .video-info {
-    padding: 11px 12px 13px;
-  }
-
-  .video-title {
-    font-size: 0.85rem;
-  }
-
-  .thumb-check {
-    width: 48px;
-    height: 48px;
-    font-size: 1.18rem;
-  }
-}
-
-@media (max-width: 420px) {
-  .video-grid {
-    grid-template-columns: 1fr;
-  }
-}
-```
-
----
-
-## `script.js`
-
-```javascript
 const CONFIG = {
   playlistId: "PLNeIX7aaNBTU",
 
   /*
     Opcional.
 
-    Para exibir título real + duração de todos os vídeos,
-    coloque aqui uma chave da YouTube Data API v3.
+    Sem API:
+    - o site funciona;
+    - carrega o player;
+    - conta vídeos se o player devolver a playlist;
+    - tenta buscar títulos por oEmbed;
+    - não mostra duração.
 
-    Exemplo:
-    youtubeApiKey: "SUA_CHAVE_AQUI"
-
-    Recomendado: restringir a chave ao domínio do seu GitHub Pages.
+    Com API:
+    - carrega títulos reais com mais estabilidade;
+    - carrega duração;
+    - depende menos do retorno do player.
   */
   youtubeApiKey: "",
 
@@ -740,10 +41,17 @@ let videos = [];
 let currentIndex = 0;
 let activeFilter = "all";
 let watched = loadProgress();
+let forcedLoadAttempted = false;
 
 function loadYouTubeAPI() {
+  els.statusLabel.textContent = "Carregando";
+
   const tag = document.createElement("script");
   tag.src = "https://www.youtube.com/iframe_api";
+  tag.onerror = () => {
+    showLoadError("A API do YouTube não carregou.");
+  };
+
   document.head.appendChild(tag);
 }
 
@@ -757,7 +65,8 @@ window.onYouTubeIframeAPIReady = function () {
       rel: 0,
       modestbranding: 1,
       playsinline: 1,
-      controls: 1
+      controls: 1,
+      origin: window.location.origin
     },
     events: {
       onReady: handlePlayerReady,
@@ -767,109 +76,223 @@ window.onYouTubeIframeAPIReady = function () {
   });
 };
 
-function handlePlayerReady() {
+async function handlePlayerReady() {
+  els.statusLabel.textContent = "Sincronizando";
+
+  if (CONFIG.youtubeApiKey.trim()) {
+    const loadedFromAPI = await buildPlaylistFromYouTubeDataAPI();
+
+    if (loadedFromAPI) {
+      player.cuePlaylist({
+        listType: "playlist",
+        list: CONFIG.playlistId,
+        index: 0
+      });
+
+      render();
+      updateDashboard();
+
+      return;
+    }
+  }
+
   player.cuePlaylist({
     listType: "playlist",
     list: CONFIG.playlistId,
     index: 0
   });
 
-  waitForPlaylist();
+  setTimeout(() => collectPlaylistFromPlayer(), 700);
 }
 
-function waitForPlaylist(attempt = 0) {
+function collectPlaylistFromPlayer(attempt = 0) {
   const playlist = safeCall(() => player.getPlaylist(), []);
+  const index = safeCall(() => player.getPlaylistIndex(), 0);
 
   if (Array.isArray(playlist) && playlist.length > 0) {
-    videos = playlist.map((id, index) => ({
+    videos = playlist.map((id, videoIndex) => ({
       id,
-      index,
-      title: `Aula ${String(index + 1).padStart(2, "0")}`,
+      index: videoIndex,
+      title: `Aula ${String(videoIndex + 1).padStart(2, "0")}`,
       duration: ""
     }));
 
-    currentIndex = safeCall(() => player.getPlaylistIndex(), 0) || 0;
+    currentIndex = Number.isInteger(index) && index >= 0 ? index : 0;
 
     render();
     updateDashboard();
-
     hydrateMetadata();
 
     return;
   }
 
-  if (attempt > 40) {
-    els.videoGrid.innerHTML = `
-      <div class="empty-state">
-        Não foi possível carregar a lista de vídeos.
-      </div>
-    `;
+  /*
+    Em alguns navegadores, cuePlaylist não é suficiente para o getPlaylist()
+    devolver a lista. Então tentamos loadPlaylist uma vez e pausamos logo depois.
+  */
+  if (attempt === 12 && !forcedLoadAttempted) {
+    forcedLoadAttempted = true;
 
-    showToast("Abra a playlist pelo player.");
+    safeCall(() => {
+      player.loadPlaylist({
+        listType: "playlist",
+        list: CONFIG.playlistId,
+        index: 0
+      });
+    }, null);
+
+    setTimeout(() => {
+      safeCall(() => player.pauseVideo(), null);
+    }, 500);
+  }
+
+  if (attempt > 70) {
+    showLoadError("Não foi possível carregar a playlist.");
     return;
   }
 
-  setTimeout(() => waitForPlaylist(attempt + 1), 300);
+  setTimeout(() => collectPlaylistFromPlayer(attempt + 1), 400);
+}
+
+async function buildPlaylistFromYouTubeDataAPI() {
+  try {
+    const playlistVideos = await fetchPlaylistVideosFromYouTubeDataAPI();
+
+    if (!playlistVideos.length) return false;
+
+    const ids = playlistVideos.map(video => video.id);
+    const details = await fetchVideoDetailsFromYouTubeDataAPI(ids);
+
+    videos = playlistVideos.map((video, index) => {
+      const detail = details.get(video.id);
+
+      return {
+        id: video.id,
+        index,
+        title: detail?.title || video.title || `Aula ${String(index + 1).padStart(2, "0")}`,
+        duration: detail?.duration || ""
+      };
+    });
+
+    currentIndex = 0;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchPlaylistVideosFromYouTubeDataAPI() {
+  const allVideos = [];
+  let pageToken = "";
+
+  do {
+    const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+
+    url.searchParams.set("part", "snippet,contentDetails");
+    url.searchParams.set("playlistId", CONFIG.playlistId);
+    url.searchParams.set("maxResults", "50");
+    url.searchParams.set("key", CONFIG.youtubeApiKey.trim());
+
+    if (pageToken) {
+      url.searchParams.set("pageToken", pageToken);
+    }
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Erro ao buscar playlist.");
+    }
+
+    const data = await response.json();
+
+    data.items.forEach(item => {
+      const videoId = item.contentDetails?.videoId;
+
+      if (!videoId) return;
+
+      allVideos.push({
+        id: videoId,
+        title: item.snippet?.title || ""
+      });
+    });
+
+    pageToken = data.nextPageToken || "";
+  } while (pageToken);
+
+  return allVideos;
+}
+
+async function fetchVideoDetailsFromYouTubeDataAPI(ids) {
+  const details = new Map();
+  const chunks = chunkArray(ids, 50);
+
+  for (const chunk of chunks) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+
+    url.searchParams.set("part", "snippet,contentDetails");
+    url.searchParams.set("id", chunk.join(","));
+    url.searchParams.set("key", CONFIG.youtubeApiKey.trim());
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Erro ao buscar detalhes dos vídeos.");
+    }
+
+    const data = await response.json();
+
+    data.items.forEach(item => {
+      details.set(item.id, {
+        title: item.snippet?.title || "",
+        duration: formatISODuration(item.contentDetails?.duration || "")
+      });
+    });
+  }
+
+  return details;
 }
 
 async function hydrateMetadata() {
   if (!videos.length) return;
 
   if (CONFIG.youtubeApiKey.trim()) {
-    await fetchMetadataFromYouTubeDataAPI();
-  } else {
-    await fetchTitlesFromOEmbed();
+    try {
+      const ids = videos.map(video => video.id);
+      const details = await fetchVideoDetailsFromYouTubeDataAPI(ids);
+
+      videos = videos.map(video => {
+        const detail = details.get(video.id);
+
+        if (!detail) return video;
+
+        return {
+          ...video,
+          title: detail.title || video.title,
+          duration: detail.duration || video.duration
+        };
+      });
+
+      render();
+      updateDashboard();
+
+      return;
+    } catch {
+      showToast("Metadados indisponíveis.");
+    }
   }
+
+  await fetchTitlesFromOEmbed();
 
   render();
   updateDashboard();
-}
-
-async function fetchMetadataFromYouTubeDataAPI() {
-  try {
-    const ids = videos.map(video => video.id).join(",");
-
-    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
-    url.searchParams.set("part", "snippet,contentDetails");
-    url.searchParams.set("id", ids);
-    url.searchParams.set("key", CONFIG.youtubeApiKey.trim());
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error("Erro ao buscar dados da API.");
-    }
-
-    const data = await response.json();
-    const detailsById = new Map();
-
-    data.items.forEach(item => {
-      detailsById.set(item.id, {
-        title: item.snippet?.title || "",
-        duration: formatISODuration(item.contentDetails?.duration || "")
-      });
-    });
-
-    videos = videos.map(video => {
-      const details = detailsById.get(video.id);
-
-      if (!details) return video;
-
-      return {
-        ...video,
-        title: details.title || video.title,
-        duration: details.duration || video.duration
-      };
-    });
-  } catch {
-    showToast("Metadados indisponíveis.");
-  }
 }
 
 async function fetchTitlesFromOEmbed() {
   try {
     const requests = videos.map(async video => {
       const url = new URL("https://www.youtube.com/oembed");
+
       url.searchParams.set("url", `https://www.youtube.com/watch?v=${video.id}`);
       url.searchParams.set("format", "json");
 
@@ -896,10 +319,8 @@ async function fetchTitlesFromOEmbed() {
     });
   } catch {
     /*
-      Sem problema.
-
-      Se o oEmbed falhar por bloqueio, rede ou limite,
-      o site continua usando Aula 01, Aula 02 etc.
+      Se o oEmbed falhar, tudo bem.
+      O site continua com Aula 01, Aula 02 etc.
     */
   }
 }
@@ -917,9 +338,11 @@ function handlePlayerError() {
 }
 
 function syncCurrentVideo() {
+  if (!player) return;
+
   const index = safeCall(() => player.getPlaylistIndex(), currentIndex);
 
-  if (Number.isInteger(index) && index >= 0) {
+  if (Number.isInteger(index) && index >= 0 && index < videos.length) {
     currentIndex = index;
     render();
     updateDashboard();
@@ -1071,6 +494,18 @@ function render() {
   }).join("");
 }
 
+function showLoadError(message) {
+  els.statusLabel.textContent = "Erro";
+  els.videoGrid.innerHTML = `
+    <div class="empty-state">
+      ${message}<br>
+      Verifique se a playlist é pública e se o ID está correto.
+    </div>
+  `;
+
+  showToast(message);
+}
+
 function formatISODuration(duration) {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
 
@@ -1113,6 +548,16 @@ function safeCall(callback, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function chunkArray(array, size) {
+  const chunks = [];
+
+  for (let index = 0; index < array.length; index += size) {
+    chunks.push(array.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 els.videoGrid.addEventListener("click", event => {
@@ -1196,6 +641,3 @@ setInterval(() => {
 }, 3000);
 
 loadYouTubeAPI();
-```
-
-Ficou assim: vídeo assistido agora ganha **thumb mais apagada em P&B**, **overlay verde discreto**, **check central verde** e etiqueta **“Assistido”** em verde.
