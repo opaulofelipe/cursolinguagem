@@ -4,17 +4,11 @@ const CONFIG = {
   /*
     Opcional.
 
-    Sem API:
-    - o site funciona;
-    - carrega o player;
-    - conta vídeos se o player devolver a playlist;
-    - tenta buscar títulos por oEmbed;
-    - não mostra duração.
+    Coloque uma chave da YouTube Data API v3 para exibir
+    títulos e durações com maior estabilidade.
 
-    Com API:
-    - carrega títulos reais com mais estabilidade;
-    - carrega duração;
-    - depende menos do retorno do player.
+    Exemplo:
+    youtubeApiKey: "SUA_CHAVE_AQUI"
   */
   youtubeApiKey: "",
 
@@ -27,6 +21,7 @@ const els = {
   watchedVideos: document.querySelector("#watchedVideos"),
   progressPercent: document.querySelector("#progressPercent"),
   progressFill: document.querySelector("#progressFill"),
+  currentVideoTitle: document.querySelector("#currentVideoTitle"),
   videoGrid: document.querySelector("#videoGrid"),
   resetBtn: document.querySelector("#resetBtn"),
   prevBtn: document.querySelector("#prevBtn"),
@@ -45,9 +40,12 @@ let forcedLoadAttempted = false;
 
 function loadYouTubeAPI() {
   els.statusLabel.textContent = "Carregando";
+  els.currentVideoTitle.textContent = "CARREGANDO";
 
   const tag = document.createElement("script");
+
   tag.src = "https://www.youtube.com/iframe_api";
+
   tag.onerror = () => {
     showLoadError("A API do YouTube não carregou.");
   };
@@ -59,6 +57,7 @@ window.onYouTubeIframeAPIReady = function () {
   player = new YT.Player("player", {
     width: "100%",
     height: "100%",
+
     playerVars: {
       listType: "playlist",
       list: CONFIG.playlistId,
@@ -68,6 +67,7 @@ window.onYouTubeIframeAPIReady = function () {
       controls: 1,
       origin: window.location.origin
     },
+
     events: {
       onReady: handlePlayerReady,
       onStateChange: handlePlayerStateChange,
@@ -80,7 +80,8 @@ async function handlePlayerReady() {
   els.statusLabel.textContent = "Sincronizando";
 
   if (CONFIG.youtubeApiKey.trim()) {
-    const loadedFromAPI = await buildPlaylistFromYouTubeDataAPI();
+    const loadedFromAPI =
+      await buildPlaylistFromYouTubeDataAPI();
 
     if (loadedFromAPI) {
       player.cuePlaylist({
@@ -106,8 +107,15 @@ async function handlePlayerReady() {
 }
 
 function collectPlaylistFromPlayer(attempt = 0) {
-  const playlist = safeCall(() => player.getPlaylist(), []);
-  const index = safeCall(() => player.getPlaylistIndex(), 0);
+  const playlist = safeCall(
+    () => player.getPlaylist(),
+    []
+  );
+
+  const index = safeCall(
+    () => player.getPlaylistIndex(),
+    0
+  );
 
   if (Array.isArray(playlist) && playlist.length > 0) {
     videos = playlist.map((id, videoIndex) => ({
@@ -117,7 +125,10 @@ function collectPlaylistFromPlayer(attempt = 0) {
       duration: ""
     }));
 
-    currentIndex = Number.isInteger(index) && index >= 0 ? index : 0;
+    currentIndex =
+      Number.isInteger(index) && index >= 0
+        ? index
+        : 0;
 
     render();
     updateDashboard();
@@ -127,8 +138,8 @@ function collectPlaylistFromPlayer(attempt = 0) {
   }
 
   /*
-    Em alguns navegadores, cuePlaylist não é suficiente para o getPlaylist()
-    devolver a lista. Então tentamos loadPlaylist uma vez e pausamos logo depois.
+    Alguns navegadores não disponibilizam a playlist imediatamente
+    depois de cuePlaylist. Nesse caso, tentamos carregar e pausar.
   */
   if (attempt === 12 && !forcedLoadAttempted) {
     forcedLoadAttempted = true;
@@ -147,21 +158,34 @@ function collectPlaylistFromPlayer(attempt = 0) {
   }
 
   if (attempt > 70) {
-    showLoadError("Não foi possível carregar a playlist.");
+    showLoadError(
+      "Não foi possível carregar a playlist."
+    );
+
     return;
   }
 
-  setTimeout(() => collectPlaylistFromPlayer(attempt + 1), 400);
+  setTimeout(
+    () => collectPlaylistFromPlayer(attempt + 1),
+    400
+  );
 }
 
 async function buildPlaylistFromYouTubeDataAPI() {
   try {
-    const playlistVideos = await fetchPlaylistVideosFromYouTubeDataAPI();
+    const playlistVideos =
+      await fetchPlaylistVideosFromYouTubeDataAPI();
 
-    if (!playlistVideos.length) return false;
+    if (!playlistVideos.length) {
+      return false;
+    }
 
-    const ids = playlistVideos.map(video => video.id);
-    const details = await fetchVideoDetailsFromYouTubeDataAPI(ids);
+    const ids = playlistVideos.map(
+      video => video.id
+    );
+
+    const details =
+      await fetchVideoDetailsFromYouTubeDataAPI(ids);
 
     videos = playlistVideos.map((video, index) => {
       const detail = details.get(video.id);
@@ -169,7 +193,10 @@ async function buildPlaylistFromYouTubeDataAPI() {
       return {
         id: video.id,
         index,
-        title: detail?.title || video.title || `Aula ${String(index + 1).padStart(2, "0")}`,
+        title:
+          detail?.title ||
+          video.title ||
+          `Aula ${String(index + 1).padStart(2, "0")}`,
         duration: detail?.duration || ""
       };
     });
@@ -187,29 +214,51 @@ async function fetchPlaylistVideosFromYouTubeDataAPI() {
   let pageToken = "";
 
   do {
-    const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+    const url = new URL(
+      "https://www.googleapis.com/youtube/v3/playlistItems"
+    );
 
-    url.searchParams.set("part", "snippet,contentDetails");
-    url.searchParams.set("playlistId", CONFIG.playlistId);
+    url.searchParams.set(
+      "part",
+      "snippet,contentDetails"
+    );
+
+    url.searchParams.set(
+      "playlistId",
+      CONFIG.playlistId
+    );
+
     url.searchParams.set("maxResults", "50");
-    url.searchParams.set("key", CONFIG.youtubeApiKey.trim());
+
+    url.searchParams.set(
+      "key",
+      CONFIG.youtubeApiKey.trim()
+    );
 
     if (pageToken) {
-      url.searchParams.set("pageToken", pageToken);
+      url.searchParams.set(
+        "pageToken",
+        pageToken
+      );
     }
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error("Erro ao buscar playlist.");
+      throw new Error(
+        "Erro ao buscar playlist."
+      );
     }
 
     const data = await response.json();
 
     data.items.forEach(item => {
-      const videoId = item.contentDetails?.videoId;
+      const videoId =
+        item.contentDetails?.videoId;
 
-      if (!videoId) return;
+      if (!videoId) {
+        return;
+      }
 
       allVideos.push({
         id: videoId,
@@ -228,16 +277,31 @@ async function fetchVideoDetailsFromYouTubeDataAPI(ids) {
   const chunks = chunkArray(ids, 50);
 
   for (const chunk of chunks) {
-    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+    const url = new URL(
+      "https://www.googleapis.com/youtube/v3/videos"
+    );
 
-    url.searchParams.set("part", "snippet,contentDetails");
-    url.searchParams.set("id", chunk.join(","));
-    url.searchParams.set("key", CONFIG.youtubeApiKey.trim());
+    url.searchParams.set(
+      "part",
+      "snippet,contentDetails"
+    );
+
+    url.searchParams.set(
+      "id",
+      chunk.join(",")
+    );
+
+    url.searchParams.set(
+      "key",
+      CONFIG.youtubeApiKey.trim()
+    );
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error("Erro ao buscar detalhes dos vídeos.");
+      throw new Error(
+        "Erro ao buscar detalhes dos vídeos."
+      );
     }
 
     const data = await response.json();
@@ -245,7 +309,9 @@ async function fetchVideoDetailsFromYouTubeDataAPI(ids) {
     data.items.forEach(item => {
       details.set(item.id, {
         title: item.snippet?.title || "",
-        duration: formatISODuration(item.contentDetails?.duration || "")
+        duration: formatISODuration(
+          item.contentDetails?.duration || ""
+        )
       });
     });
   }
@@ -254,22 +320,30 @@ async function fetchVideoDetailsFromYouTubeDataAPI(ids) {
 }
 
 async function hydrateMetadata() {
-  if (!videos.length) return;
+  if (!videos.length) {
+    return;
+  }
 
   if (CONFIG.youtubeApiKey.trim()) {
     try {
       const ids = videos.map(video => video.id);
-      const details = await fetchVideoDetailsFromYouTubeDataAPI(ids);
+
+      const details =
+        await fetchVideoDetailsFromYouTubeDataAPI(ids);
 
       videos = videos.map(video => {
         const detail = details.get(video.id);
 
-        if (!detail) return video;
+        if (!detail) {
+          return video;
+        }
 
         return {
           ...video,
-          title: detail.title || video.title,
-          duration: detail.duration || video.duration
+          title:
+            detail.title || video.title,
+          duration:
+            detail.duration || video.duration
         };
       });
 
@@ -290,25 +364,39 @@ async function hydrateMetadata() {
 
 async function fetchTitlesFromOEmbed() {
   try {
-    const requests = videos.map(async video => {
-      const url = new URL("https://www.youtube.com/oembed");
+    const requests = videos.map(
+      async video => {
+        const url = new URL(
+          "https://www.youtube.com/oembed"
+        );
 
-      url.searchParams.set("url", `https://www.youtube.com/watch?v=${video.id}`);
-      url.searchParams.set("format", "json");
+        url.searchParams.set(
+          "url",
+          `https://www.youtube.com/watch?v=${video.id}`
+        );
 
-      const response = await fetch(url);
+        url.searchParams.set(
+          "format",
+          "json"
+        );
 
-      if (!response.ok) return video;
+        const response = await fetch(url);
 
-      const data = await response.json();
+        if (!response.ok) {
+          return video;
+        }
 
-      return {
-        ...video,
-        title: data.title || video.title
-      };
-    });
+        const data = await response.json();
 
-    const results = await Promise.allSettled(requests);
+        return {
+          ...video,
+          title: data.title || video.title
+        };
+      }
+    );
+
+    const results =
+      await Promise.allSettled(requests);
 
     videos = results.map((result, index) => {
       if (result.status === "fulfilled") {
@@ -319,8 +407,8 @@ async function fetchTitlesFromOEmbed() {
     });
   } catch {
     /*
-      Se o oEmbed falhar, tudo bem.
-      O site continua com Aula 01, Aula 02 etc.
+      Caso o oEmbed falhe, o site mantém os títulos
+      Aula 01, Aula 02 etc.
     */
   }
 }
@@ -338,12 +426,22 @@ function handlePlayerError() {
 }
 
 function syncCurrentVideo() {
-  if (!player) return;
+  if (!player) {
+    return;
+  }
 
-  const index = safeCall(() => player.getPlaylistIndex(), currentIndex);
+  const index = safeCall(
+    () => player.getPlaylistIndex(),
+    currentIndex
+  );
 
-  if (Number.isInteger(index) && index >= 0 && index < videos.length) {
+  if (
+    Number.isInteger(index) &&
+    index >= 0 &&
+    index < videos.length
+  ) {
     currentIndex = index;
+
     render();
     updateDashboard();
   }
@@ -354,10 +452,14 @@ function getCurrentVideo() {
 }
 
 function playVideo(index) {
-  if (!player || !videos[index]) return;
+  if (!player || !videos[index]) {
+    return;
+  }
 
   currentIndex = index;
+
   player.playVideoAt(index);
+
   render();
   updateDashboard();
 }
@@ -365,9 +467,12 @@ function playVideo(index) {
 function markCurrentAsWatched() {
   const current = getCurrentVideo();
 
-  if (!current) return;
+  if (!current) {
+    return;
+  }
 
   watched.add(current.id);
+
   saveProgress();
   render();
   updateDashboard();
@@ -387,27 +492,45 @@ function toggleWatched(id) {
 
 function loadProgress() {
   try {
-    const raw = localStorage.getItem(CONFIG.storageKey);
-    const parsed = raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(
+      CONFIG.storageKey
+    );
 
-    return new Set(Array.isArray(parsed) ? parsed : []);
+    const parsed = raw
+      ? JSON.parse(raw)
+      : [];
+
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed
+        : []
+    );
   } catch {
     return new Set();
   }
 }
 
 function saveProgress() {
-  localStorage.setItem(CONFIG.storageKey, JSON.stringify([...watched]));
+  localStorage.setItem(
+    CONFIG.storageKey,
+    JSON.stringify([...watched])
+  );
 }
 
 function getWatchedCount() {
-  return videos.filter(video => watched.has(video.id)).length;
+  return videos.filter(
+    video => watched.has(video.id)
+  ).length;
 }
 
 function getProgressPercent() {
-  if (!videos.length) return 0;
+  if (!videos.length) {
+    return 0;
+  }
 
-  return Math.round((getWatchedCount() / videos.length) * 100);
+  return Math.round(
+    (getWatchedCount() / videos.length) * 100
+  );
 }
 
 function updateDashboard() {
@@ -420,26 +543,51 @@ function updateDashboard() {
   els.watchedVideos.textContent = done;
   els.progressPercent.textContent = `${percent}%`;
   els.progressFill.style.width = `${percent}%`;
-  els.statusLabel.textContent = total ? `${done}/${total}` : "Carregando";
+
+  els.statusLabel.textContent = total
+    ? `${done}/${total}`
+    : "Carregando";
+
+  els.currentVideoTitle.textContent = current
+    ? formatDisplayTitle(current.title)
+    : "CARREGANDO";
 
   if (current && watched.has(current.id)) {
     els.markBtn.textContent = "✓";
-    els.markBtn.title = "Remover dos assistidos";
+    els.markBtn.title =
+      "Remover dos assistidos";
+    els.markBtn.setAttribute(
+      "aria-label",
+      "Remover dos assistidos"
+    );
   } else {
     els.markBtn.textContent = "+";
-    els.markBtn.title = "Marcar como assistido";
+    els.markBtn.title =
+      "Marcar como assistido";
+    els.markBtn.setAttribute(
+      "aria-label",
+      "Marcar como assistido"
+    );
   }
 }
 
 function render() {
-  const filteredVideos = videos.filter(video => {
-    const isWatched = watched.has(video.id);
+  const filteredVideos = videos.filter(
+    video => {
+      const isWatched =
+        watched.has(video.id);
 
-    if (activeFilter === "watched") return isWatched;
-    if (activeFilter === "pending") return !isWatched;
+      if (activeFilter === "watched") {
+        return isWatched;
+      }
 
-    return true;
-  });
+      if (activeFilter === "pending") {
+        return !isWatched;
+      }
+
+      return true;
+    }
+  );
 
   if (!filteredVideos.length) {
     els.videoGrid.innerHTML = `
@@ -451,54 +599,105 @@ function render() {
     return;
   }
 
-  els.videoGrid.innerHTML = filteredVideos.map(video => {
-    const isWatched = watched.has(video.id);
-    const isActive = video.index === currentIndex;
-    const title = escapeHTML(video.title);
-    const duration = escapeHTML(video.duration);
+  els.videoGrid.innerHTML = filteredVideos
+    .map(video => {
+      const isWatched =
+        watched.has(video.id);
 
-    return `
-      <article 
-        class="video-card ${isWatched ? "watched" : ""} ${isActive ? "active" : ""}" 
-        data-index="${video.index}"
-      >
-        <div class="thumb">
-          <img 
-            src="https://img.youtube.com/vi/${video.id}/hqdefault.jpg" 
-            alt="${title}" 
-            loading="lazy"
-          />
+      const isActive =
+        video.index === currentIndex;
 
-          <div class="badge">${video.index + 1}</div>
+      const title = escapeHTML(
+        formatDisplayTitle(video.title)
+      );
 
-          ${duration ? `<div class="duration-badge">${duration}</div>` : ""}
+      const duration = escapeHTML(
+        video.duration
+      );
 
-          <div class="thumb-check">✓</div>
-        </div>
+      return `
+        <article
+          class="
+            video-card
+            ${isWatched ? "watched" : ""}
+            ${isActive ? "active" : ""}
+          "
+          data-index="${video.index}"
+          aria-label="${title}"
+        >
+          <div class="thumb">
+            <img
+              src="https://img.youtube.com/vi/${video.id}/hqdefault.jpg"
+              alt="${title}"
+              loading="lazy"
+            />
 
-        <div class="video-info">
-          <div class="video-title">${title}</div>
-
-          <div class="video-meta">
-            <span class="video-duration">${duration || ""}</span>
+            <div class="badge">
+              ${video.index + 1}
+            </div>
 
             ${
-              isWatched
-                ? `<span class="state-pill watched">Assistido</span>`
-                : `<span class="state-pill">Pendente</span>`
+              duration
+                ? `
+                  <div class="duration-badge">
+                    ${duration}
+                  </div>
+                `
+                : ""
             }
+
+            <div class="thumb-check">
+              ✓
+            </div>
           </div>
-        </div>
-      </article>
-    `;
-  }).join("");
+
+          <div class="video-info">
+            <div class="video-title">
+              ${title}
+            </div>
+
+            <div class="video-meta">
+              <span class="video-duration">
+                ${duration || ""}
+              </span>
+
+              ${
+                isWatched
+                  ? `
+                    <span class="state-pill watched">
+                      Assistido
+                    </span>
+                  `
+                  : `
+                    <span class="state-pill">
+                      Pendente
+                    </span>
+                  `
+              }
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function formatDisplayTitle(value) {
+  return String(value || "")
+    .trim()
+    .toLocaleUpperCase("pt-BR");
 }
 
 function showLoadError(message) {
   els.statusLabel.textContent = "Erro";
+
+  els.currentVideoTitle.textContent =
+    "PLAYLIST INDISPONÍVEL";
+
   els.videoGrid.innerHTML = `
     <div class="empty-state">
-      ${message}<br>
+      ${escapeHTML(message)}
+      <br>
       Verifique se a playlist é pública e se o ID está correto.
     </div>
   `;
@@ -507,19 +706,30 @@ function showLoadError(message) {
 }
 
 function formatISODuration(duration) {
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  const match = duration.match(
+    /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
+  );
 
-  if (!match) return "";
+  if (!match) {
+    return "";
+  }
 
   const hours = Number(match[1] || 0);
   const minutes = Number(match[2] || 0);
   const seconds = Number(match[3] || 0);
 
   if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    return (
+      `${hours}:` +
+      `${String(minutes).padStart(2, "0")}:` +
+      `${String(seconds).padStart(2, "0")}`
+    );
   }
 
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return (
+    `${minutes}:` +
+    `${String(seconds).padStart(2, "0")}`
+  );
 }
 
 function escapeHTML(value) {
@@ -553,87 +763,161 @@ function safeCall(callback, fallback) {
 function chunkArray(array, size) {
   const chunks = [];
 
-  for (let index = 0; index < array.length; index += size) {
-    chunks.push(array.slice(index, index + size));
+  for (
+    let index = 0;
+    index < array.length;
+    index += size
+  ) {
+    chunks.push(
+      array.slice(index, index + size)
+    );
   }
 
   return chunks;
 }
 
-els.videoGrid.addEventListener("click", event => {
-  const card = event.target.closest(".video-card");
+els.videoGrid.addEventListener(
+  "click",
+  event => {
+    const card = event.target.closest(
+      ".video-card"
+    );
 
-  if (!card) return;
+    if (!card) {
+      return;
+    }
 
-  const index = Number(card.dataset.index);
+    const index = Number(
+      card.dataset.index
+    );
 
-  playVideo(index);
-});
+    playVideo(index);
+  }
+);
 
-els.markBtn.addEventListener("click", () => {
-  const current = getCurrentVideo();
+els.markBtn.addEventListener(
+  "click",
+  () => {
+    const current = getCurrentVideo();
 
-  if (!current) return;
+    if (!current) {
+      return;
+    }
 
-  toggleWatched(current.id);
-});
+    toggleWatched(current.id);
+  }
+);
 
-els.prevBtn.addEventListener("click", () => {
-  if (!player) return;
+els.prevBtn.addEventListener(
+  "click",
+  () => {
+    if (!player) {
+      return;
+    }
 
-  player.previousVideo();
+    player.previousVideo();
 
-  setTimeout(syncCurrentVideo, 350);
-});
+    setTimeout(
+      syncCurrentVideo,
+      350
+    );
+  }
+);
 
-els.nextBtn.addEventListener("click", () => {
-  if (!player) return;
+els.nextBtn.addEventListener(
+  "click",
+  () => {
+    if (!player) {
+      return;
+    }
 
-  player.nextVideo();
+    player.nextVideo();
 
-  setTimeout(syncCurrentVideo, 350);
-});
+    setTimeout(
+      syncCurrentVideo,
+      350
+    );
+  }
+);
 
-els.resetBtn.addEventListener("click", () => {
-  const shouldReset = confirm("Zerar progresso?");
+els.resetBtn.addEventListener(
+  "click",
+  () => {
+    const shouldReset = confirm(
+      "Zerar progresso?"
+    );
 
-  if (!shouldReset) return;
+    if (!shouldReset) {
+      return;
+    }
 
-  watched.clear();
-  saveProgress();
-  render();
-  updateDashboard();
-  showToast("Progresso zerado.");
-});
+    watched.clear();
+
+    saveProgress();
+    render();
+    updateDashboard();
+
+    showToast("Progresso zerado.");
+  }
+);
 
 els.filterButtons.forEach(button => {
-  button.addEventListener("click", () => {
-    els.filterButtons.forEach(item => item.classList.remove("active"));
+  button.addEventListener(
+    "click",
+    () => {
+      els.filterButtons.forEach(item => {
+        item.classList.remove("active");
+      });
 
-    button.classList.add("active");
-    activeFilter = button.dataset.filter;
+      button.classList.add("active");
 
-    render();
-  });
+      activeFilter =
+        button.dataset.filter;
+
+      render();
+    }
+  );
 });
 
 setInterval(() => {
-  if (!player || !videos.length) return;
+  if (!player || !videos.length) {
+    return;
+  }
 
-  const state = safeCall(() => player.getPlayerState(), null);
+  const state = safeCall(
+    () => player.getPlayerState(),
+    null
+  );
 
-  if (state !== YT.PlayerState.PLAYING) return;
+  if (state !== YT.PlayerState.PLAYING) {
+    return;
+  }
 
-  const duration = safeCall(() => player.getDuration(), 0);
-  const currentTime = safeCall(() => player.getCurrentTime(), 0);
+  const duration = safeCall(
+    () => player.getDuration(),
+    0
+  );
+
+  const currentTime = safeCall(
+    () => player.getCurrentTime(),
+    0
+  );
+
   const current = getCurrentVideo();
 
-  if (!current || !duration) return;
+  if (!current || !duration) {
+    return;
+  }
 
-  const watchedEnough = currentTime / duration >= 0.9;
+  const watchedEnough =
+    currentTime / duration >= 0.9;
 
-  if (watchedEnough && !watched.has(current.id)) {
+  if (
+    watchedEnough &&
+    !watched.has(current.id)
+  ) {
     watched.add(current.id);
+
     saveProgress();
     render();
     updateDashboard();
